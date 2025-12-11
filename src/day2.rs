@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 const INPUT: &str = include_str!("../input/day-2.txt");
 
 pub fn part_1() -> usize {
@@ -22,44 +20,68 @@ pub fn part_1() -> usize {
 		.sum::<usize>()
 }
 
-pub fn part_2() -> usize {
+pub fn part_2() -> u64 {
 	INPUT
 		.split(',')
 		.map(|range| {
 			let (start, end) = range.split_once('-').unwrap();
-			(start.parse::<usize>().unwrap()..=end.parse().unwrap())
-				.filter(|num| {
-					let num_str = num.to_string();
-                    let mut chars = num_str.chars();
-                    let first = chars.next().unwrap();
-
-                    let all_chars = HashSet::<char>::from_iter(chars);
-
-					let mut matched_indices: Vec<_> = num_str
-						.match_indices(first)
-						.map(|m| m.0)
-						.collect();
-
-					if matched_indices.len() == 1 {
-						return false;
-					}
-					if *matched_indices.last().unwrap() != num_str.len() {
-						matched_indices.push(num_str.len());
-					}
-
-                    // FIXME: does not work when the same digit is repeated in sequence, example:
-                    // 11851185
-                    // TRY: merging windows until the window has all the distinct characters that
-                    // the entire string has
-					for window in matched_indices.windows(3) {
-						if num_str[window[0]..window[1]] != num_str[window[1]..window[2]] {
-							return false;
-						}
-					}
-
-					true
-				})
-				.sum::<usize>()
+			(start.parse::<u64>().unwrap()..=end.parse().unwrap())
+				.filter(|&n| is_repeating_sequence(n))
+				.sum::<u64>()
 		})
-		.sum::<usize>()
+		.sum::<u64>()
+}
+
+const TEN: u64 = 10;
+
+fn is_repeating_sequence(num: u64) -> bool {
+	let total_digits = digits_in_numer(num);
+
+	for digits_to_cmp in 1..=total_digits / 2 {
+		if total_digits % digits_to_cmp != 0 {
+			continue;
+		}
+
+		let mut cur = 0;
+
+		let twice = digits_to_cmp + digits_to_cmp;
+
+		let mut agg = true;
+
+		while cur + twice <= total_digits {
+			let next_cur = cur + digits_to_cmp;
+
+			let first_mul = TEN.pow((total_digits - cur) as u32);
+			let first =
+				(num - (num / first_mul) * first_mul) / TEN.pow((total_digits - next_cur) as u32);
+
+			let second_mul = TEN.pow((total_digits - next_cur) as u32);
+			let second = (num - (num / second_mul) * second_mul)
+				/ TEN.pow((total_digits - (next_cur + digits_to_cmp)) as u32);
+
+			agg = agg && first == second;
+
+			if !agg {
+				break;
+			}
+
+			cur = next_cur;
+		}
+		if agg {
+			return true;
+		}
+	}
+
+	false
+}
+
+fn digits_in_numer(mut num: u64) -> u64 {
+	let mut c = 0;
+
+	while num != 0 {
+		num /= TEN;
+		c += 1;
+	}
+
+	c
 }
